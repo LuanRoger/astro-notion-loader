@@ -1,5 +1,5 @@
-import { visit } from 'unist-util-visit';
-import type { VFile } from 'vfile';
+import { visit } from "unist-util-visit";
+import type { VFile } from "vfile";
 
 interface Config {
   imagePaths?: string[];
@@ -7,12 +7,12 @@ interface Config {
 
 export function rehypeImages() {
   return ({ imagePaths }: Config) =>
-    function (tree: any, file: VFile) {
+    (tree: any, file: VFile) => {
       const imageOccurrenceMap = new Map();
 
       visit(tree, (node) => {
-        if (node.type !== 'element') return;
-        if (node.tagName !== 'img') return;
+        if (node.type !== "element") return;
+        if (node.tagName !== "img") return;
 
         if (node.properties?.src) {
           node.properties.src = decodeURI(node.properties.src);
@@ -27,7 +27,10 @@ export function rehypeImages() {
             const index = imageOccurrenceMap.get(node.properties.src) || 0;
             imageOccurrenceMap.set(node.properties.src, index + 1);
 
-            node.properties['__ASTRO_IMAGE_'] = JSON.stringify({ ...props, index });
+            node.properties["__ASTRO_IMAGE_"] = JSON.stringify({
+              ...props,
+              index,
+            });
 
             Object.keys(props).forEach((prop) => {
               delete node.properties[prop];

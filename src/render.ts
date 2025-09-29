@@ -1,37 +1,49 @@
-import type { AstroIntegrationLogger, MarkdownHeading } from 'astro';
-import type { ParseDataOptions } from 'astro/loaders';
-
+import type {
+  HtmlElementNode,
+  ListNode,
+  TextNode,
+} from "@jsdevtools/rehype-toc";
+import { toc as rehypeToc } from "@jsdevtools/rehype-toc";
+import {
+  type Client,
+  isFullBlock,
+  iteratePaginatedAPI,
+} from "@notionhq/client";
+import type { AstroIntegrationLogger, MarkdownHeading } from "astro";
+import type { ParseDataOptions } from "astro/loaders";
 // #region Processor
-import * as fse from 'fs-extra';
-import notionRehype from 'notion-rehype-k';
-import rehypeKatex from 'rehype-katex';
-import rehypeSlug from 'rehype-slug';
-import rehypeStringify from 'rehype-stringify';
-import { unified, type Plugin } from 'unified';
-import { type VFile } from 'vfile';
+import * as fse from "fs-extra";
+import { dim } from "kleur/colors";
+import notionRehype from "notion-rehype-k";
+import rehypeKatex from "rehype-katex";
+import rehypeSlug from "rehype-slug";
+import rehypeStringify from "rehype-stringify";
+import { type Plugin, unified } from "unified";
+import type { VFile } from "vfile";
 
-import type { HtmlElementNode, ListNode, TextNode } from '@jsdevtools/rehype-toc';
-import { toc as rehypeToc } from '@jsdevtools/rehype-toc';
-import { isFullBlock, iteratePaginatedAPI, type Client } from '@notionhq/client';
-import { dim } from 'kleur/colors';
-
-import { fileToUrl } from './format.js';
-import { saveImageFromAWS, transformImagePathForCover } from './image.js';
-import { rehypeImages } from './rehype/rehype-images.js';
-import type { FileObject, NotionPageData, PageObjectResponse } from './types.js';
+import { fileToUrl } from "./format.js";
+import { saveImageFromAWS, transformImagePathForCover } from "./image.js";
+import { rehypeImages } from "./rehype/rehype-images.js";
+import type {
+  FileObject,
+  NotionPageData,
+  PageObjectResponse,
+} from "./types.js";
 
 const baseProcessor = unified()
   .use(notionRehype, {}) // Parse Notion blocks to rehype AST
   .use(rehypeSlug)
   .use(
-    // @ts-ignore
-    rehypeKatex
+    // @ts-expect-error
+    rehypeKatex,
   ) // Then you can use any rehype plugins to enrich the AST
   .use(rehypeStringify); // Turn AST to HTML string
 
 export type RehypePlugin = Plugin<any[], any>;
 
-export function buildProcessor(rehypePlugins: Promise<ReadonlyArray<readonly [RehypePlugin, any]>>) {
+export function buildProcessor(
+  rehypePlugins: Promise<ReadonlyArray<readonly [RehypePlugin, any]>>,
+) {
   let headings: MarkdownHeading[] = [];
 
   const processorWithToc = baseProcessor().use(rehypeToc, {
@@ -49,8 +61,13 @@ export function buildProcessor(rehypePlugins: Promise<ReadonlyArray<readonly [Re
   });
 
   return async function process(blocks: unknown[], imagePaths: string[]) {
-    const processor = await processorPromise.then((p) => p().use(rehypeImages(), { imagePaths }));
-    const vFile = (await processor.process({ data: blocks } as Record<string, unknown>)) as VFile;
+    const processor = await processorPromise.then((p) =>
+      p().use(rehypeImages(), { imagePaths }),
+    );
+    const vFile = (await processor.process({ data: blocks } as Record<
+      string,
+      unknown
+    >)) as VFile;
     return { vFile, headings };
   };
 }
@@ -69,7 +86,11 @@ async function awaitAll<T>(iterable: AsyncIterable<T>) {
  * @param blockId ID of block to get children for.
  * @param fetchImage Function that fetches an image and returns a local path.
  */
-async function* listBlocks(client: Client, blockId: string, fetchImage: (file: FileObject) => Promise<string>) {
+async function* listBlocks(
+  client: Client,
+  blockId: string,
+  fetchImage: (file: FileObject) => Promise<string>,
+) {
   for await (const block of iteratePaginatedAPI(client.blocks.children.list, {
     block_id: blockId,
   })) {
@@ -79,12 +100,12 @@ async function* listBlocks(client: Client, blockId: string, fetchImage: (file: F
 
     if (block.has_children) {
       const children = await awaitAll(listBlocks(client, block.id, fetchImage));
-      // @ts-ignore -- TODO: Make TypeScript happy here
+      // @ts-expect-error -- TODO: Make TypeScript happy here
       block[block.type].children = children;
     }
 
     // Specialized handling for image blocks
-    if (block.type === 'image') {
+    if (block.type === "image") {
       // Fetch remote image and store it locally
       const url = await fetchImage(block.image);
       // notion-rehype-k incorrectly expects "file" to be a string instead of an object
@@ -103,7 +124,7 @@ async function* listBlocks(client: Client, blockId: string, fetchImage: (file: F
 }
 
 function extractTocHeadings(toc: HtmlElementNode): MarkdownHeading[] {
-  if (toc.tagName !== 'nav') {
+  if (toc.tagName !== "nav") {
     throw new Error(`Expected nav, got ${toc.tagName}`);
   }
 
@@ -120,7 +141,9 @@ function extractTocHeadings(toc: HtmlElementNode): MarkdownHeading[] {
 
       let headings = [currentHeading];
       if (subList) {
-        headings = headings.concat(listElementToTree(subList as ListNode, depth + 1));
+        headings = headings.concat(
+          listElementToTree(subList as ListNode, depth + 1),
+        );
       }
       return headings;
     });
@@ -139,7 +162,7 @@ export interface RenderedNotionEntry {
 
 export class NotionPageRenderer {
   #imagePaths: string[] = [];
-  #imageAnalytics: Record<'download' | 'cached', number> = {
+  #imageAnalytics: Record<"download" | "cached", number> = {
     download: 0,
     cached: 0,
   };
@@ -154,7 +177,7 @@ export class NotionPageRenderer {
     private readonly client: Client,
     private readonly page: PageObjectResponse,
     public readonly imageSavePath: string,
-    logger: AstroIntegrationLogger
+    logger: AstroIntegrationLogger,
   ) {
     this.#logger = logger.fork(`${logger.label}/render`);
   }
@@ -162,11 +185,14 @@ export class NotionPageRenderer {
   /**
    * Return page properties for Astro to use.
    */
-  async getPageData(transformCoverImage = false, rootAlias = 'src'): Promise<ParseDataOptions<NotionPageData>> {
+  async getPageData(
+    transformCoverImage = false,
+    rootAlias = "src",
+  ): Promise<ParseDataOptions<NotionPageData>> {
     const { page } = this;
     let cover = page.cover;
     // transform cover image file
-    if (cover && transformCoverImage && cover.type === 'file') {
+    if (cover && transformCoverImage && cover.type === "file") {
       const transformedUrl = `${rootAlias}/${transformImagePathForCover(await this.#fetchImage(cover))}`;
       cover = {
         ...cover,
@@ -195,24 +221,32 @@ export class NotionPageRenderer {
    * @param process Processor function to transform Notion blocks into HTML.
    * This is created once for all pages then shared.
    */
-  async render(process: ReturnType<typeof buildProcessor>): Promise<RenderedNotionEntry | undefined> {
-    this.#logger.debug('Rendering page');
+  async render(
+    process: ReturnType<typeof buildProcessor>,
+  ): Promise<RenderedNotionEntry | undefined> {
+    this.#logger.debug("Rendering page");
 
     try {
-      const blocks = await awaitAll(listBlocks(this.client, this.page.id, this.#fetchImage));
+      const blocks = await awaitAll(
+        listBlocks(this.client, this.page.id, this.#fetchImage),
+      );
 
-      if (this.#imageAnalytics.download > 0 || this.#imageAnalytics.cached > 0) {
+      if (
+        this.#imageAnalytics.download > 0 ||
+        this.#imageAnalytics.cached > 0
+      ) {
         this.#logger.info(
           [
             `Found ${this.#imageAnalytics.download} images to download`,
-            this.#imageAnalytics.cached > 0 && dim(`${this.#imageAnalytics.cached} already cached`),
-          ].join(' ')
+            this.#imageAnalytics.cached > 0 &&
+              dim(`${this.#imageAnalytics.cached} already cached`),
+          ].join(" "),
         );
       }
 
       const { vFile, headings } = await process(blocks, this.#imagePaths);
 
-      this.#logger.debug('Rendered page');
+      this.#logger.debug("Rendered page");
 
       return {
         html: vFile.toString(),
@@ -233,24 +267,30 @@ export class NotionPageRenderer {
    * @param imageFileObject Notion file object representing an image.
    * @returns Local path to the image, or undefined if the image could not be fetched.
    */
-  #fetchImage: (imageFileObject: FileObject) => Promise<string> = async (imageFileObject) => {
+  #fetchImage: (imageFileObject: FileObject) => Promise<string> = async (
+    imageFileObject,
+  ) => {
     try {
       // only file type will be processed
-      if (imageFileObject.type === 'external') {
+      if (imageFileObject.type === "external") {
         return imageFileObject.external.url;
       }
 
       fse.ensureDirSync(this.imageSavePath);
 
       // 文件需要下载到本地的指定目录中
-      const imageUrl = await saveImageFromAWS(imageFileObject.file.url, this.imageSavePath, {
-        log: (message) => {
-          this.#logger.debug(message);
+      const imageUrl = await saveImageFromAWS(
+        imageFileObject.file.url,
+        this.imageSavePath,
+        {
+          log: (message) => {
+            this.#logger.debug(message);
+          },
+          tag: (type) => {
+            this.#imageAnalytics[type]++;
+          },
         },
-        tag: (type) => {
-          this.#imageAnalytics[type]++;
-        },
-      });
+      );
       this.#imagePaths.push(imageUrl);
       return imageUrl;
     } catch (error) {
@@ -264,9 +304,9 @@ export class NotionPageRenderer {
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
-  } else if (typeof error === 'string') {
+  } else if (typeof error === "string") {
     return error;
   } else {
-    return 'Unknown error';
+    return "Unknown error";
   }
 }

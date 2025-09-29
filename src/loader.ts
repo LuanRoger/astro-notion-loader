@@ -1,14 +1,13 @@
-import type { RehypePlugins } from "astro";
-import type { Loader } from "astro/loaders";
-
+import * as path from "node:path";
 import {
   Client,
   isFullPage,
   iteratePaginatedAPI,
   type QueryDataSourceParameters,
 } from "@notionhq/client";
+import type { RehypePlugins } from "astro";
+import type { Loader } from "astro/loaders";
 import { dim } from "kleur/colors";
-import * as path from "node:path";
 
 import { propertiesSchemaForDatabase } from "./database-properties.js";
 import { VIRTUAL_CONTENT_ROOT } from "./image.js";
@@ -118,7 +117,7 @@ export function notionLoader({
           .default as RehypePlugin;
       }
       return [plugin, options] as const;
-    })
+    }),
   );
   const processor = buildProcessor(resolvedRehypePlugins);
 
@@ -128,7 +127,7 @@ export function notionLoader({
       notionPageSchema({
         properties: await propertiesSchemaForDatabase(
           notionClient,
-          data_source_id
+          data_source_id,
         ),
       }),
     async load(ctx) {
@@ -138,7 +137,7 @@ export function notionLoader({
       const renderPromises: Promise<void>[] = [];
 
       log_db.info(
-        `Loading database ${dim(`found ${existingPageIds.size} pages in store`)}`
+        `Loading database ${dim(`found ${existingPageIds.size} pages in store`)}`,
       );
 
       const pages = iteratePaginatedAPI(notionClient.dataSources.query, {
@@ -161,10 +160,10 @@ export function notionLoader({
 
         // Create metadata for logging
         const titleProp = Object.entries(page.properties).find(
-          ([_, property]) => property.type === "title"
+          ([_, property]) => property.type === "title",
         );
         const pageTitle = transformedPropertySchema.title.safeParse(
-          titleProp ? titleProp[1] : {}
+          titleProp ? titleProp[1] : {},
         );
         const pageMetadata = [
           `${pageTitle.success ? '"' + pageTitle.data + '"' : "Untitled"}`,
@@ -179,21 +178,21 @@ export function notionLoader({
           const realSavePath = path.resolve(
             process.cwd(),
             "src",
-            imageSavePath
+            imageSavePath,
           );
 
           const renderer = new NotionPageRenderer(
             notionClient,
             page,
             realSavePath,
-            log_pg
+            log_pg,
           );
 
           const data = await parseData(
             await renderer.getPageData(
               experimentalCacheImageInData,
-              experimentalRootSourceAlias
-            )
+              experimentalRootSourceAlias,
+            ),
           );
 
           const renderPromise = renderer.render(processor).then((rendered) => {
@@ -210,7 +209,7 @@ export function notionLoader({
           renderPromises.push(renderPromise);
 
           log_pg.info(
-            `${isCached ? "Updated" : "Created"} page ${dim(pageMetadata)}`
+            `${isCached ? "Updated" : "Created"} page ${dim(pageMetadata)}`,
           );
         } else {
           log_pg.debug(`Skipped page ${dim(pageMetadata)}`);
@@ -220,7 +219,7 @@ export function notionLoader({
       // Remove any pages that have been deleted
       for (const deletedPageId of existingPageIds) {
         const log_pg = log_db.fork(
-          `${log_db.label}/${deletedPageId.slice(0, 6)}`
+          `${log_db.label}/${deletedPageId.slice(0, 6)}`,
         );
 
         store.delete(deletedPageId);
@@ -228,7 +227,7 @@ export function notionLoader({
       }
 
       log_db.info(
-        `Loaded database ${dim(`fetched ${pageCount} pages from API`)}`
+        `Loaded database ${dim(`fetched ${pageCount} pages from API`)}`,
       );
 
       if (renderPromises.length === 0) {
