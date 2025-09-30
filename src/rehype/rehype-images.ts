@@ -17,7 +17,7 @@ export function rehypeImages() {
         if (node.properties?.src) {
           node.properties.src = decodeURI(node.properties.src);
           if (file.data.astro) {
-            file.data.astro.localImagePaths = imagePaths;
+            file.data.astro.remoteImagePaths = imagePaths;
           }
 
           if (imagePaths?.includes(node.properties.src)) {

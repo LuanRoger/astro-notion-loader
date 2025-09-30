@@ -117,7 +117,7 @@ export function notionLoader({
           .default as RehypePlugin;
       }
       return [plugin, options] as const;
-    }),
+    })
   );
   const processor = buildProcessor(resolvedRehypePlugins);
 
@@ -127,17 +127,19 @@ export function notionLoader({
       notionPageSchema({
         properties: await propertiesSchemaForDataSource(
           notionClient,
-          data_source_id,
+          data_source_id
         ),
       }),
     async load(ctx) {
-      const { store, logger: log_db, parseData } = ctx;
+      const { store, logger, parseData } = ctx;
 
       const existingPageIds = new Set<string>(store.keys());
       const renderPromises: Promise<void>[] = [];
 
-      log_db.info(
-        `Loading database ${dim(`found ${existingPageIds.size} pages in store`)}`,
+      logger.info(
+        `Loading data source ${dim(
+          `found ${existingPageIds.size} pages in store`
+        )}`
       );
 
       const pages = iteratePaginatedAPI(notionClient.dataSources.query, {
@@ -150,20 +152,21 @@ export function notionLoader({
       let pageCount = 0;
 
       for await (const page of pages) {
+        logger.debug(`Fetched page ${page.id} from API`);
         if (!isFullPage(page)) {
           continue;
         }
 
         pageCount++;
 
-        const log_pg = log_db.fork(`${log_db.label}/${page.id.slice(0, 6)}`);
+        const log_pg = logger.fork(`${logger.label}/${page.id.slice(0, 6)}`);
 
         // Create metadata for logging
         const titleProp = Object.entries(page.properties).find(
-          ([_, property]) => property.type === "title",
+          ([_, property]) => property.type === "title"
         );
         const pageTitle = transformedPropertySchema.title.safeParse(
-          titleProp ? titleProp[1] : {},
+          titleProp ? titleProp[1] : {}
         );
         const pageMetadata = [
           `${pageTitle.success ? '"' + pageTitle.data + '"' : "Untitled"}`,
@@ -178,21 +181,21 @@ export function notionLoader({
           const realSavePath = path.resolve(
             process.cwd(),
             "src",
-            imageSavePath,
+            imageSavePath
           );
 
           const renderer = new NotionPageRenderer(
             notionClient,
             page,
             realSavePath,
-            log_pg,
+            log_pg
           );
 
           const data = await parseData(
             await renderer.getPageData(
               experimentalCacheImageInData,
-              experimentalRootSourceAlias,
-            ),
+              experimentalRootSourceAlias
+            )
           );
 
           const renderPromise = renderer.render(processor).then((rendered) => {
@@ -201,15 +204,16 @@ export function notionLoader({
               digest: page.last_edited_time,
               data,
               rendered,
-              filePath: `${VIRTUAL_CONTENT_ROOT}/${page.id}.md`, // 不重要，有就行
+              filePath: `${VIRTUAL_CONTENT_ROOT}/${page.id}.md`,
               assetImports: rendered?.metadata.imagePaths,
             });
           });
+          logger.warn(`Rendering page ${dim(pageMetadata)}...`);
 
           renderPromises.push(renderPromise);
 
           log_pg.info(
-            `${isCached ? "Updated" : "Created"} page ${dim(pageMetadata)}`,
+            `${isCached ? "Updated" : "Created"} page ${dim(pageMetadata)}`
           );
         } else {
           log_pg.debug(`Skipped page ${dim(pageMetadata)}`);
@@ -218,26 +222,27 @@ export function notionLoader({
 
       // Remove any pages that have been deleted
       for (const deletedPageId of existingPageIds) {
-        const log_pg = log_db.fork(
-          `${log_db.label}/${deletedPageId.slice(0, 6)}`,
+        const log_pg = logger.fork(
+          `${logger.label}/${deletedPageId.slice(0, 6)}`
         );
 
         store.delete(deletedPageId);
         log_pg.info(`Deleted page`);
       }
 
-      log_db.info(
-        `Loaded database ${dim(`fetched ${pageCount} pages from API`)}`,
+      logger.info(
+        `Loaded data source ${dim(`fetched ${pageCount} pages from API`)}`
       );
 
       if (renderPromises.length === 0) {
+        logger.info("No pages to render");
         return;
       }
 
       // Wait for rendering to complete
-      log_db.info(`Rendering ${renderPromises.length} updated pages`);
+      logger.info(`Rendering ${renderPromises.length} updated pages`);
       await Promise.all(renderPromises);
-      log_db.info(`Rendered ${renderPromises.length} pages`);
+      logger.info(`Rendered ${renderPromises.length} pages`);
     },
   };
 }

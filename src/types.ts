@@ -12,7 +12,7 @@ type Asserts<Function> = Function extends (input: any) => input is infer Type
 export type ClientOptions = NonNullable<
   ConstructorParameters<typeof Client>[0]
 >;
-export interface QueryDatabaseParameters
+export interface QueryDataSourceParameters
   extends NonNullable<Parameters<Client["dataSources"]["query"]>[0]> {}
 
 export type DataSourcePropertyConfigResponse = Asserts<
