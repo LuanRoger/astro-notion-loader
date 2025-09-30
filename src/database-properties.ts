@@ -1,22 +1,24 @@
 import type { Client } from "@notionhq/client";
 import { z } from "astro/zod";
 import * as rawPropertyType from "./schemas/raw-properties.js";
-import type { DatabasePropertyConfigResponse } from "./types.js";
+import type { DataSourcePropertyConfigResponse } from "./types.js";
 
-export async function propertiesSchemaForDatabase(
+export async function propertiesSchemaForDataSource(
   client: Client,
-  databaseId: string,
+  dataSourceId: string
 ) {
-  const database = await client.databases.retrieve({ database_id: databaseId });
+  const dataSource = await client.dataSources.retrieve({
+    data_source_id: dataSourceId,
+  });
 
-  const schemaForDatabaseProperty: (
-    propertyConfig: DatabasePropertyConfigResponse,
+  const schemaForDataSourceProperty: (
+    propertyConfig: DataSourcePropertyConfigResponse
   ) => z.ZodTypeAny = (propertyConfig) => rawPropertyType[propertyConfig.type];
 
   const schema = Object.fromEntries(
-    Object.entries(database.properties).map(
-      ([key, value]: [string, DatabasePropertyConfigResponse]) => {
-        let propertySchema = schemaForDatabaseProperty(value);
+    Object.entries(dataSource.properties).map(
+      ([key, value]: [string, DataSourcePropertyConfigResponse]) => {
+        let propertySchema = schemaForDataSourceProperty(value);
         if (value.description) {
           propertySchema = propertySchema.describe(value.description);
         }
@@ -25,8 +27,8 @@ export async function propertiesSchemaForDatabase(
         }
 
         return [key, propertySchema];
-      },
-    ),
+      }
+    )
   );
 
   return z.object(schema);

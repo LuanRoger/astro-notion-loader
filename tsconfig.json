@@ -6,6 +6,7 @@
     "lib": ["ESNext"],
     "skipLibCheck": true,
     "esModuleInterop": true,
+    "types": ["astro/client"],
 
     /* Bundler mode */
     "moduleResolution": "bundler",

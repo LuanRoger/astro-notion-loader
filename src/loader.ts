@@ -9,7 +9,7 @@ import type { RehypePlugins } from "astro";
 import type { Loader } from "astro/loaders";
 import { dim } from "kleur/colors";
 
-import { propertiesSchemaForDatabase } from "./database-properties.js";
+import { propertiesSchemaForDataSource } from "./database-properties.js";
 import { VIRTUAL_CONTENT_ROOT } from "./image.js";
 import {
   buildProcessor,
@@ -125,7 +125,7 @@ export function notionLoader({
     name: collectionName ? `notion-loader/${collectionName}` : "notion-loader",
     schema: async () =>
       notionPageSchema({
-        properties: await propertiesSchemaForDatabase(
+        properties: await propertiesSchemaForDataSource(
           notionClient,
           data_source_id,
         ),

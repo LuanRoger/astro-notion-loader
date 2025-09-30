@@ -34,7 +34,6 @@ const baseProcessor = unified()
   .use(notionRehype, {}) // Parse Notion blocks to rehype AST
   .use(rehypeSlug)
   .use(
-    // @ts-expect-error
     rehypeKatex,
   ) // Then you can use any rehype plugins to enrich the AST
   .use(rehypeStringify); // Turn AST to HTML string
@@ -168,17 +167,24 @@ export class NotionPageRenderer {
   };
   #logger: AstroIntegrationLogger;
 
+  private readonly client: Client;
+  private readonly page: PageObjectResponse;
+  public readonly imageSavePath: string;
+
   /**
    * @param client Notion API client.
    * @param page Notion page object including page ID and properties. Does not include blocks.
    * @param parentLogger Logger to use for logging messages.
    */
   constructor(
-    private readonly client: Client,
-    private readonly page: PageObjectResponse,
-    public readonly imageSavePath: string,
+    client: Client,
+    page: PageObjectResponse,
+    imageSavePath: string,
     logger: AstroIntegrationLogger,
   ) {
+    this.client = client;
+    this.page = page;
+    this.imageSavePath = imageSavePath;
     this.#logger = logger.fork(`${logger.label}/render`);
   }
 
