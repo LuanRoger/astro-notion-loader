@@ -37,7 +37,7 @@ const baseProcessor = unified()
 export type RehypePlugin = Plugin<any[], any>;
 
 export function buildProcessor(
-  rehypePlugins: Promise<ReadonlyArray<readonly [RehypePlugin, any]>>
+  rehypePlugins: Promise<ReadonlyArray<readonly [RehypePlugin, any]>>,
 ) {
   let headings: MarkdownHeading[] = [];
 
@@ -57,7 +57,7 @@ export function buildProcessor(
 
   return async function process(blocks: unknown[], imagePaths: string[]) {
     const processor = await processorPromise.then((p) =>
-      p().use(rehypeImages(), { imagePaths })
+      p().use(rehypeImages(), { imagePaths }),
     );
     const vFile = (await processor.process({ data: blocks } as Record<
       string,
@@ -84,7 +84,7 @@ async function awaitAll<T>(iterable: AsyncIterable<T>) {
 async function* listBlocks(
   client: Client,
   blockId: string,
-  fetchImage: (file: FileObject) => Promise<string>
+  fetchImage: (file: FileObject) => Promise<string>,
 ) {
   for await (const block of iteratePaginatedAPI(client.blocks.children.list, {
     block_id: blockId,
@@ -134,7 +134,7 @@ function extractTocHeadings(toc: HtmlElementNode): MarkdownHeading[] {
       let headings = [currentHeading];
       if (subList) {
         headings = headings.concat(
-          listElementToTree(subList as ListNode, depth + 1)
+          listElementToTree(subList as ListNode, depth + 1),
         );
       }
       return headings;
@@ -173,7 +173,7 @@ export class NotionPageRenderer {
     client: Client,
     page: PageObjectResponse,
     imageSavePath: string,
-    logger: AstroIntegrationLogger
+    logger: AstroIntegrationLogger,
   ) {
     this.#logger = logger.fork(`${logger.label}/render`);
     this.client = client;
@@ -186,14 +186,14 @@ export class NotionPageRenderer {
    */
   async getPageData(
     transformCoverImage = false,
-    rootAlias = "src"
+    rootAlias = "src",
   ): Promise<ParseDataOptions<NotionPageData>> {
     const { page } = this;
     let cover = page.cover;
     // transform cover image file
     if (cover && transformCoverImage && cover.type === "file") {
       const transformedUrl = `${rootAlias}/${transformImagePathForCover(
-        await this.#fetchImage(cover)
+        await this.#fetchImage(cover),
       )}`;
       cover = {
         ...cover,
@@ -223,13 +223,13 @@ export class NotionPageRenderer {
    * This is created once for all pages then shared.
    */
   async render(
-    process: ReturnType<typeof buildProcessor>
+    process: ReturnType<typeof buildProcessor>,
   ): Promise<RenderedNotionEntry | undefined> {
     this.#logger.debug("Rendering page");
 
     try {
       const blocks = await awaitAll(
-        listBlocks(this.client, this.page.id, this.#fetchImage)
+        listBlocks(this.client, this.page.id, this.#fetchImage),
       );
 
       if (
@@ -241,7 +241,7 @@ export class NotionPageRenderer {
             `Found ${this.#imageAnalytics.download} images to download`,
             this.#imageAnalytics.cached > 0 &&
               dim(`${this.#imageAnalytics.cached} already cached`),
-          ].join(" ")
+          ].join(" "),
         );
       }
 
@@ -269,7 +269,7 @@ export class NotionPageRenderer {
    * @returns Local path to the image, or undefined if the image could not be fetched.
    */
   #fetchImage: (imageFileObject: FileObject) => Promise<string> = async (
-    imageFileObject
+    imageFileObject,
   ) => {
     try {
       if (imageFileObject.type === "external") {
@@ -288,7 +288,7 @@ export class NotionPageRenderer {
           tag: (type) => {
             this.#imageAnalytics[type]++;
           },
-        }
+        },
       );
       this.#imagePaths.push(imageUrl);
       return imageUrl;

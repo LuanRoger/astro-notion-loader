@@ -117,7 +117,7 @@ export function notionLoader({
           .default as RehypePlugin;
       }
       return [plugin, options] as const;
-    })
+    }),
   );
   const processor = buildProcessor(resolvedRehypePlugins);
 
@@ -127,7 +127,7 @@ export function notionLoader({
       notionPageSchema({
         properties: await propertiesSchemaForDataSource(
           notionClient,
-          data_source_id
+          data_source_id,
         ),
       }),
     async load(ctx) {
@@ -138,8 +138,8 @@ export function notionLoader({
 
       logger.info(
         `Loading data source ${dim(
-          `found ${existingPageIds.size} pages in store`
-        )}`
+          `found ${existingPageIds.size} pages in store`,
+        )}`,
       );
 
       const pages = iteratePaginatedAPI(notionClient.dataSources.query, {
@@ -163,10 +163,10 @@ export function notionLoader({
 
         // Create metadata for logging
         const titleProp = Object.entries(page.properties).find(
-          ([_, property]) => property.type === "title"
+          ([_, property]) => property.type === "title",
         );
         const pageTitle = transformedPropertySchema.title.safeParse(
-          titleProp ? titleProp[1] : {}
+          titleProp ? titleProp[1] : {},
         );
         const pageMetadata = [
           `${pageTitle.success ? '"' + pageTitle.data + '"' : "Untitled"}`,
@@ -181,21 +181,21 @@ export function notionLoader({
           const realSavePath = path.resolve(
             process.cwd(),
             "src",
-            imageSavePath
+            imageSavePath,
           );
 
           const renderer = new NotionPageRenderer(
             notionClient,
             page,
             realSavePath,
-            log_pg
+            log_pg,
           );
 
           const data = await parseData(
             await renderer.getPageData(
               experimentalCacheImageInData,
-              experimentalRootSourceAlias
-            )
+              experimentalRootSourceAlias,
+            ),
           );
 
           const renderPromise = renderer.render(processor).then((rendered) => {
@@ -213,7 +213,7 @@ export function notionLoader({
           renderPromises.push(renderPromise);
 
           log_pg.info(
-            `${isCached ? "Updated" : "Created"} page ${dim(pageMetadata)}`
+            `${isCached ? "Updated" : "Created"} page ${dim(pageMetadata)}`,
           );
         } else {
           log_pg.debug(`Skipped page ${dim(pageMetadata)}`);
@@ -223,7 +223,7 @@ export function notionLoader({
       // Remove any pages that have been deleted
       for (const deletedPageId of existingPageIds) {
         const log_pg = logger.fork(
-          `${logger.label}/${deletedPageId.slice(0, 6)}`
+          `${logger.label}/${deletedPageId.slice(0, 6)}`,
         );
 
         store.delete(deletedPageId);
@@ -231,7 +231,7 @@ export function notionLoader({
       }
 
       logger.info(
-        `Loaded data source ${dim(`fetched ${pageCount} pages from API`)}`
+        `Loaded data source ${dim(`fetched ${pageCount} pages from API`)}`,
       );
 
       if (renderPromises.length === 0) {

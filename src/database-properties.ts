@@ -5,14 +5,14 @@ import type { DataSourcePropertyConfigResponse } from "./types.js";
 
 export async function propertiesSchemaForDataSource(
   client: Client,
-  dataSourceId: string
+  dataSourceId: string,
 ) {
   const dataSource = await client.dataSources.retrieve({
     data_source_id: dataSourceId,
   });
 
   const schemaForDataSourceProperty: (
-    propertyConfig: DataSourcePropertyConfigResponse
+    propertyConfig: DataSourcePropertyConfigResponse,
   ) => z.ZodTypeAny = (propertyConfig) => rawPropertyType[propertyConfig.type];
 
   const schema = Object.fromEntries(
@@ -27,8 +27,8 @@ export async function propertiesSchemaForDataSource(
         }
 
         return [key, propertySchema];
-      }
-    )
+      },
+    ),
   );
 
   return z.object(schema);
