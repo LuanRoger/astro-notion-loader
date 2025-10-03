@@ -11,11 +11,9 @@ import {
 } from "@notionhq/client";
 import type { AstroIntegrationLogger, MarkdownHeading } from "astro";
 import type { ParseDataOptions } from "astro/loaders";
-// #region Processor
 import * as fse from "fs-extra";
 import { dim } from "kleur/colors";
 import notionRehype from "notion-rehype-k";
-import rehypeKatex from "rehype-katex";
 import rehypeSlug from "rehype-slug";
 import rehypeStringify from "rehype-stringify";
 import { type Plugin, unified } from "unified";
@@ -31,17 +29,15 @@ import type {
 } from "./types.js";
 
 const baseProcessor = unified()
-  .use(notionRehype, {}) // Parse Notion blocks to rehype AST
+  .use(notionRehype, {})
   .use(rehypeSlug)
-  .use(
-    rehypeKatex,
-  ) // Then you can use any rehype plugins to enrich the AST
-  .use(rehypeStringify); // Turn AST to HTML string
+  //.use(rehypeKatex) // Then you can use any rehype plugins to enrich the AST
+  .use(rehypeStringify);
 
 export type RehypePlugin = Plugin<any[], any>;
 
 export function buildProcessor(
-  rehypePlugins: Promise<ReadonlyArray<readonly [RehypePlugin, any]>>,
+  rehypePlugins: Promise<ReadonlyArray<readonly [RehypePlugin, any]>>
 ) {
   let headings: MarkdownHeading[] = [];
 
@@ -61,7 +57,7 @@ export function buildProcessor(
 
   return async function process(blocks: unknown[], imagePaths: string[]) {
     const processor = await processorPromise.then((p) =>
-      p().use(rehypeImages(), { imagePaths }),
+      p().use(rehypeImages(), { imagePaths })
     );
     const vFile = (await processor.process({ data: blocks } as Record<
       string,
@@ -88,7 +84,7 @@ async function awaitAll<T>(iterable: AsyncIterable<T>) {
 async function* listBlocks(
   client: Client,
   blockId: string,
-  fetchImage: (file: FileObject) => Promise<string>,
+  fetchImage: (file: FileObject) => Promise<string>
 ) {
   for await (const block of iteratePaginatedAPI(client.blocks.children.list, {
     block_id: blockId,
@@ -103,11 +99,8 @@ async function* listBlocks(
       block[block.type].children = children;
     }
 
-    // Specialized handling for image blocks
     if (block.type === "image") {
-      // Fetch remote image and store it locally
       const url = await fetchImage(block.image);
-      // notion-rehype-k incorrectly expects "file" to be a string instead of an object
       yield {
         ...block,
         image: {
@@ -141,7 +134,7 @@ function extractTocHeadings(toc: HtmlElementNode): MarkdownHeading[] {
       let headings = [currentHeading];
       if (subList) {
         headings = headings.concat(
-          listElementToTree(subList as ListNode, depth + 1),
+          listElementToTree(subList as ListNode, depth + 1)
         );
       }
       return headings;
@@ -180,12 +173,12 @@ export class NotionPageRenderer {
     client: Client,
     page: PageObjectResponse,
     imageSavePath: string,
-    logger: AstroIntegrationLogger,
+    logger: AstroIntegrationLogger
   ) {
+    this.#logger = logger.fork(`${logger.label}/render`);
     this.client = client;
     this.page = page;
     this.imageSavePath = imageSavePath;
-    this.#logger = logger.fork(`${logger.label}/render`);
   }
 
   /**
@@ -193,13 +186,15 @@ export class NotionPageRenderer {
    */
   async getPageData(
     transformCoverImage = false,
-    rootAlias = "src",
+    rootAlias = "src"
   ): Promise<ParseDataOptions<NotionPageData>> {
     const { page } = this;
     let cover = page.cover;
     // transform cover image file
     if (cover && transformCoverImage && cover.type === "file") {
-      const transformedUrl = `${rootAlias}/${transformImagePathForCover(await this.#fetchImage(cover))}`;
+      const transformedUrl = `${rootAlias}/${transformImagePathForCover(
+        await this.#fetchImage(cover)
+      )}`;
       cover = {
         ...cover,
         file: {
@@ -228,13 +223,13 @@ export class NotionPageRenderer {
    * This is created once for all pages then shared.
    */
   async render(
-    process: ReturnType<typeof buildProcessor>,
+    process: ReturnType<typeof buildProcessor>
   ): Promise<RenderedNotionEntry | undefined> {
     this.#logger.debug("Rendering page");
 
     try {
       const blocks = await awaitAll(
-        listBlocks(this.client, this.page.id, this.#fetchImage),
+        listBlocks(this.client, this.page.id, this.#fetchImage)
       );
 
       if (
@@ -246,7 +241,7 @@ export class NotionPageRenderer {
             `Found ${this.#imageAnalytics.download} images to download`,
             this.#imageAnalytics.cached > 0 &&
               dim(`${this.#imageAnalytics.cached} already cached`),
-          ].join(" "),
+          ].join(" ")
         );
       }
 
@@ -274,17 +269,15 @@ export class NotionPageRenderer {
    * @returns Local path to the image, or undefined if the image could not be fetched.
    */
   #fetchImage: (imageFileObject: FileObject) => Promise<string> = async (
-    imageFileObject,
+    imageFileObject
   ) => {
     try {
-      // only file type will be processed
       if (imageFileObject.type === "external") {
         return imageFileObject.external.url;
       }
 
       fse.ensureDirSync(this.imageSavePath);
 
-      // 文件需要下载到本地的指定目录中
       const imageUrl = await saveImageFromAWS(
         imageFileObject.file.url,
         this.imageSavePath,
@@ -295,13 +288,12 @@ export class NotionPageRenderer {
           tag: (type) => {
             this.#imageAnalytics[type]++;
           },
-        },
+        }
       );
       this.#imagePaths.push(imageUrl);
       return imageUrl;
     } catch (error) {
       this.#logger.error(`Failed to fetch image: ${getErrorMessage(error)}`);
-      // Fall back to using the remote URL directly.
       return fileToUrl(imageFileObject);
     }
   };
