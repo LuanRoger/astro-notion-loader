@@ -1,16 +1,28 @@
-## [1.0.0] - 2025-09-29
+## [1.0.0] - 2025-10-05
 
 ### 🚀 Features
 
-- Configure TypeScript
-- Add Biome and cliff configuration
-- Add tsdown config
-- Add sample source and tests
+- Add project
+- Change to data source
+- Migrate all database references to data source
+- Update loader parameters to fit naming convention
+
+### 🐛 Bug Fixes
+
+- Rename database to datasource
+- All Biome warnings and erros
+
+### 🚜 Refactor
+
+- Remove some comments
+
+### 🎨 Styling
+
+- Run Biome
+- Run Biome
 
 ### ⚙️ Miscellaneous Tasks
 
-- Install Cliff
-- Add MIT License
-- Reset version
-- Add types and exports
-- Update scope to username
+- Install nescessary dependencies
+- Update README
+- Do not run tests when pulbish
