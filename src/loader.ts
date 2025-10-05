@@ -105,7 +105,9 @@ export function notionLoader({
   const resolvedRehypePlugins = Promise.all(
     rehypePlugins.map(async (config) => {
       let plugin: RehypePlugin | string;
+      // biome-ignore lint/suspicious/noExplicitAny: It can be any rehype plugin
       let options: any;
+
       if (Array.isArray(config)) {
         [plugin, options] = config;
       } else {
@@ -169,7 +171,7 @@ export function notionLoader({
           titleProp ? titleProp[1] : {},
         );
         const pageMetadata = [
-          `${pageTitle.success ? '"' + pageTitle.data + '"' : "Untitled"}`,
+          `${pageTitle.success ? `"${pageTitle.data}"` : "Untitled"}`,
           `(last edited ${page.last_edited_time.slice(0, 10)})`,
         ].join(" ");
 

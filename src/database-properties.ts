@@ -13,6 +13,7 @@ export async function propertiesSchemaForDataSource(
 
   const schemaForDataSourceProperty: (
     propertyConfig: DataSourcePropertyConfigResponse,
+    // biome-ignore lint/performance/noDynamicNamespaceImportAccess: There's so many types we need to access dynamically.
   ) => z.ZodTypeAny = (propertyConfig) => rawPropertyType[propertyConfig.type];
 
   const schema = Object.fromEntries(
@@ -21,9 +22,6 @@ export async function propertiesSchemaForDataSource(
         let propertySchema = schemaForDataSourceProperty(value);
         if (value.description) {
           propertySchema = propertySchema.describe(value.description);
-        }
-        if (key !== "Name") {
-          // propertySchema = propertySchema.optional();
         }
 
         return [key, propertySchema];

@@ -5,6 +5,7 @@ import type { Client, isFullDataSource, isFullPage } from "@notionhq/client";
  * Types from the internal Notion JS API, exposed for use in this project.
  */
 
+// biome-ignore lint/suspicious/noExplicitAny: Notion do not type the "properties"
 type Asserts<Function> = Function extends (input: any) => input is infer Type
   ? Type
   : never;

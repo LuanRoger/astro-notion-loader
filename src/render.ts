@@ -31,12 +31,14 @@ import type {
 const baseProcessor = unified()
   .use(notionRehype, {})
   .use(rehypeSlug)
-  //.use(rehypeKatex) // Then you can use any rehype plugins to enrich the AST
+  //.use() // Then you can use any rehype plugins to enrich the AST
   .use(rehypeStringify);
 
+// biome-ignore lint/suspicious/noExplicitAny: It can be any rehype plugin
 export type RehypePlugin = Plugin<any[], any>;
 
 export function buildProcessor(
+  // biome-ignore lint/suspicious/noExplicitAny: It can be any rehype plugin
   rehypePlugins: Promise<ReadonlyArray<readonly [RehypePlugin, any]>>,
 ) {
   let headings: MarkdownHeading[] = [];
@@ -116,7 +118,8 @@ async function* listBlocks(
 }
 
 function extractTocHeadings(toc: HtmlElementNode): MarkdownHeading[] {
-  if (toc.tagName !== "nav") {
+  const tocChildren = toc.children;
+  if (toc.tagName !== "nav" || !tocChildren) {
     throw new Error(`Expected nav, got ${toc.tagName}`);
   }
 
@@ -124,11 +127,21 @@ function extractTocHeadings(toc: HtmlElementNode): MarkdownHeading[] {
     return ol.children.flatMap((li) => {
       const [_link, subList] = li.children;
       const link = _link as HtmlElementNode;
+      if (
+        !link.children ||
+        link.children.length === 0 ||
+        link.properties.href === undefined
+      ) {
+        return [];
+      }
+
+      const text = link.children[0] as TextNode;
+      const propertiesHref = link.properties.href;
 
       const currentHeading: MarkdownHeading = {
         depth,
-        text: (link.children![0] as TextNode).value,
-        slug: link.properties.href!.slice(1),
+        text: text.value,
+        slug: propertiesHref.slice(1),
       };
 
       let headings = [currentHeading];
@@ -141,7 +154,8 @@ function extractTocHeadings(toc: HtmlElementNode): MarkdownHeading[] {
     });
   }
 
-  return listElementToTree(toc.children![0] as ListNode, 0);
+  const [list] = tocChildren as [ListNode];
+  return listElementToTree(list, 0);
 }
 
 export interface RenderedNotionEntry {

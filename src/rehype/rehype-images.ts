@@ -7,6 +7,7 @@ interface Config {
 
 export function rehypeImages() {
   return ({ imagePaths }: Config) =>
+    // biome-ignore lint/suspicious/noExplicitAny: The type of the tree is unknown
     (tree: any, file: VFile) => {
       const imageOccurrenceMap = new Map();
 
@@ -27,7 +28,7 @@ export function rehypeImages() {
             const index = imageOccurrenceMap.get(node.properties.src) || 0;
             imageOccurrenceMap.set(node.properties.src, index + 1);
 
-            node.properties["__ASTRO_IMAGE_"] = JSON.stringify({
+            node.properties.__ASTRO_IMAGE_ = JSON.stringify({
               ...props,
               index,
             });
